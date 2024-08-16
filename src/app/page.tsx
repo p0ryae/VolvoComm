@@ -1,8 +1,11 @@
+"use client";
+
 import Image from "next/image";
 
 export default function Home() {
+
   return (
-    <main className="flex min-h-screen flex-col items-center font-inter justify-between p-0">
+    <main className="flex min-h-screen flex-col items-center font-inter font-medium justify-between p-0">
       <div className="flex flex-row w-full h-screen">
         <div className="flex flex-col w-1/3 bg-black-500 p-4">
           <div className="flex flex-row items-center">
@@ -13,7 +16,7 @@ export default function Home() {
           </div>
           <div className="flex flex-col my-5 space-y-3">
             <button className="transition h-10 px-2 py-2 bg-true-purple text-white text-left rounded-xl flex items-center space-x-2 hover:cursor-default hover:scale-105">
-              <div className="rounded-lg overflow-hidden">
+              <div className="rounded-full overflow-hidden">
                 <Image
                   src="/person.png"
                   alt="Person Logo"
@@ -26,7 +29,12 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <div className="w-2/3 bg-true-purple p-4"></div>
+        <div className="w-2/3 bg-true-purple p-4 flex flex-col justify-center items-center">
+          <div className="flex flex-col justify-center items-center text-center">
+            <h1 className="mb-4 text-4xl font-extrabold leading-none tracking-tight text-white md:text-5xl lg:text-6xl">Welcome to VolvoComm.</h1>
+            <p className="mb-6 text-lg font-normal text-white lg:text-xl sm:px-16 xl:px-48">Select or Add a person from the left sidebar to begin.</p>
+          </div>
+        </div>
       </div>
     </main>
   );
