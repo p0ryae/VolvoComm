@@ -18,12 +18,23 @@
 
 body {
   color: rgb(var(--foreground-rgb));
+  -webkit-user-select: none;
+  cursor: default !important;
   background: linear-gradient(
       to bottom,
       transparent,
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+}
+
+.message-bubble {
+  -webkit-user-select: auto;
+  cursor: text;
+  max-width: 60%;
+  padding: 10px 15px;
+  border-radius: 15px;
+  font-size: 16px;
 }
 
 @layer utilities {
