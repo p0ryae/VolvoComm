@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from 'react';
-import Image from "next/image";
-import { CSSTransition } from "react-transition-group";
-import styles from "./page.module.css";
 import { invoke } from "@tauri-apps/api";
+import { CSSTransition } from "react-transition-group";
+import Image from "next/image";
+import styles from "./page.module.css";
 
 type Contact = {
   id: number;
