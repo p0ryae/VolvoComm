@@ -1,12 +1,22 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use futures::prelude::*;
+use async_std::io::prelude::BufReadExt;
+use async_std::io::{stdin, BufReader};
+use futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
-use libp2p::{ping, Multiaddr};
+use libp2p::Multiaddr;
+use libp2p::{gossipsub, noise, swarm::NetworkBehaviour, tcp, yamux};
+use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
+use std::hash::{Hash, Hasher};
 use std::time::Duration;
 use tauri::Manager;
 use tracing_subscriber::EnvFilter;
+
+#[derive(NetworkBehaviour)]
+struct MyBehaviour {
+    gossipsub: gossipsub::Behaviour,
+}
 
 fn main() {
     tracing_subscriber::fmt()
@@ -25,18 +35,44 @@ fn main() {
         .expect("error while running tauri application");
 }
 
-async fn run_server(ip: String) -> Result<libp2p::Swarm<ping::Behaviour>, Box<dyn Error>> {
+async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
     let mut swarm = libp2p::SwarmBuilder::with_new_identity()
         .with_async_std()
         .with_tcp(
-            libp2p::tcp::Config::default(),
-            libp2p::tls::Config::new,
-            libp2p::yamux::Config::default,
+            tcp::Config::default(),
+            noise::Config::new,
+            yamux::Config::default,
         )?
-        .with_behaviour(|_| ping::Behaviour::default())?
-        .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX))) // Allows us to observe pings indefinitely.
+        .with_quic()
+        .with_behaviour(|key| {
+            let message_id_fn = |message: &gossipsub::Message| {
+                let mut s = DefaultHasher::new();
+                message.data.hash(&mut s);
+                gossipsub::MessageId::from(s.finish().to_string())
+            };
+
+            let gossipsub_config = gossipsub::ConfigBuilder::default()
+                .heartbeat_interval(Duration::from_secs(10))
+                .validation_mode(gossipsub::ValidationMode::Strict)
+                .message_id_fn(message_id_fn)
+                .build()?;
+
+            let gossipsub = gossipsub::Behaviour::new(
+                gossipsub::MessageAuthenticity::Signed(key.clone()),
+                gossipsub_config,
+            )?;
+
+            Ok(MyBehaviour { gossipsub })
+        })?
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
 
+    let topic = gossipsub::IdentTopic::new("VolvoComm");
+    swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
+
+    let mut _stdin = BufReader::new(stdin()).lines();
+
+    swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
     swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
 
     if !ip.is_empty() {
@@ -52,21 +88,9 @@ async fn run_server(ip: String) -> Result<libp2p::Swarm<ping::Behaviour>, Box<dy
 
     loop {
         match swarm.select_next_some().await {
-            SwarmEvent::NewListenAddr { address, .. } => {
-                println!("Listening on {address:?}");
-            }
-            SwarmEvent::Behaviour(event) => {
-                println!("Received event: {event:?}");
-            }
-            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                println!("Connection established with peer: {peer_id}");
-            }
-            SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
-                println!("Connection closed with peer: {peer_id}, cause: {cause:?}");
-            }
-            _ => {
-                println!("Other event received");
-            }
+            SwarmEvent::NewListenAddr { address, .. } => println!("Listening on {address:?}"),
+            SwarmEvent::Behaviour(event) => println!("{event:?}"),
+            _ => {}
         }
     }
 }
