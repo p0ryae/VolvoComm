@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Image from "next/image";
 import { CSSTransition } from "react-transition-group";
 import styles from "./page.module.css";
@@ -70,6 +70,7 @@ export default function VolvoComm() {
     setIsModalOpen(false);
     setNewContactName("");
     setNewContactConn("");
+    setNewContactImage("/default.png");
   };
 
   const handleSubmitKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -130,8 +131,8 @@ export default function VolvoComm() {
   return (
     <main className="select-none flex min-h-screen flex-col text-black items-center font-inter font-medium justify-between p-0">
       <div className="flex flex-row w-full h-screen">
-        <div className="flex flex-col w-1/3 bg-zinc-800 p-4">
-          <div className="flex flex-row items-center w-full">
+        <div className="flex flex-col w-1/3 bg-zinc-800">
+          <div className="flex flex-row items-center w-full p-4">
             <input
               type="text"
               value={personalUsername}
@@ -148,16 +149,15 @@ export default function VolvoComm() {
             </button>
           </div>
 
-          <div className="flex flex-col my-5 space-y-3">
+          <div className="flex flex-col my-5 mx-4">
             {contacts.map((contact) => (
               <button
                 key={contact.id}
                 onClick={() => selectContact(contact)}
-                className={`transition h-10 px-2 py-6 ${
-                  selectedContact === contact
-                    ? "bg-true-purple/50"
-                    : "bg-zinc-600/15"
-                } text-white text-left shadow-md rounded-xl flex items-center space-x-2 hover:cursor-default hover:scale-105 hover:bg-true-purple`}
+                className={`transition h-14 px-4 py-8 mb-2 ${selectedContact === contact
+                  ? "bg-true-purple/80"
+                  : "bg-true-purple/10"
+                  } text-white text-left shadow-lg border-true-purple rounded-2xl flex items-center space-x-2 hover:cursor-default`}
               >
                 <div className="rounded-full overflow-hidden">
                   <Image
@@ -172,6 +172,7 @@ export default function VolvoComm() {
                       height: "35px",
                       width: "35px",
                     }}
+                    className="shadow-md"
                   />
                 </div>
                 <span>{contact.name}</span>
@@ -194,18 +195,16 @@ export default function VolvoComm() {
                     {messages.map((message, index) => (
                       <div
                         key={index}
-                        className={`flex ${
-                          message.sender === personalUsername
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
+                        className={`flex ${message.sender === personalUsername
+                          ? "justify-end"
+                          : "justify-start"
+                          }`}
                       >
                         <div
-                          className={`message-bubble ${
-                            message.sender === personalUsername
-                              ? "bg-true-purple"
-                              : "bg-gray-600"
-                          }`}
+                          className={`message-bubble ${message.sender === personalUsername
+                            ? "bg-true-purple"
+                            : "bg-gray-600"
+                            }`}
                         >
                           {message.text}
                         </div>
