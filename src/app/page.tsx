@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { CSSTransition } from "react-transition-group";
 import Image from "next/image";
 import styles from "./page.module.css";
@@ -114,6 +114,13 @@ export default function VolvoComm() {
     }
   };
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -201,7 +208,7 @@ export default function VolvoComm() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex text-white flex-col space-y-2">
+                  <div id="chatlog" className="flex text-white flex-col space-y-2 overflow-y-auto">
                     {messages.map((message, index) => (
                       <div
                         key={index}
@@ -220,6 +227,7 @@ export default function VolvoComm() {
                         </div>
                       </div>
                     ))}
+                    <div ref={messagesEndRef} />
                   </div>
                 )}
               </div>
