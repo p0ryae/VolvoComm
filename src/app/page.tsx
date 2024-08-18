@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from 'react';
-import { invoke } from "@tauri-apps/api";
+import { useState, useEffect } from 'react';
 import { CSSTransition } from "react-transition-group";
 import Image from "next/image";
 import styles from "./page.module.css";
@@ -20,6 +19,17 @@ interface Message {
 }
 
 export default function VolvoComm() {
+  const [tauriApi, setTauriApi] = useState<any>(null);
+
+  useEffect(() => {
+    async function loadTauri() {
+      const tauri = await import('@tauri-apps/api/tauri');
+      setTauriApi(tauri);
+    }
+
+    loadTauri();
+  }, []);
+
   const [personalUsername, setPersonalUsername] = useState<string>("");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact>();
@@ -57,7 +67,7 @@ export default function VolvoComm() {
     }
 
     setSelectedContact(contact);
-    invoke("connect_peer", { ip: contact.conn }).catch(console.error);
+    tauriApi.invoke("connect_peer", { ip: contact.conn }).catch(console.error);
 
     setMessages(messageHistories[contact.id] || []);
   };
@@ -186,7 +196,7 @@ export default function VolvoComm() {
               <div className="flex-grow p-4 rounded-md overflow-y-auto w-full">
                 {messages.length === 0 ? (
                   <div className="flex text-white flex-col space-y-2 h-full justify-center items-center">
-                    <div className="text-gray-400/50">
+                    <div className="text-gray-400/50 text-xl">
                       No messages to show...
                     </div>
                   </div>
