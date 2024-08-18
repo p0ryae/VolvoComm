@@ -1,8 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use async_std::io::prelude::BufReadExt;
-use async_std::io::{stdin, BufReader};
-use futures::StreamExt;
+use tauri::Manager;
+
+use async_std::sync::Mutex;
+use futures::channel::mpsc;
+use futures::SinkExt;
+use futures::{select, StreamExt};
+use lazy_static::lazy_static;
 use libp2p::swarm::SwarmEvent;
 use libp2p::Multiaddr;
 use libp2p::{gossipsub, noise, swarm::NetworkBehaviour, tcp, yamux};
@@ -10,11 +14,14 @@ use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
-use tauri::Manager;
 use tracing_subscriber::EnvFilter;
 
+lazy_static! {
+    static ref TX: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
+}
+
 #[derive(NetworkBehaviour)]
-struct MyBehaviour {
+struct VolvoBehaviour {
     gossipsub: gossipsub::Behaviour,
 }
 
@@ -30,7 +37,11 @@ fn main() {
     });
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![show_window, connect_peer])
+        .invoke_handler(tauri::generate_handler![
+            show_window,
+            connect_peer,
+            send_message
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -62,7 +73,7 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
                 gossipsub_config,
             )?;
 
-            Ok(MyBehaviour { gossipsub })
+            Ok(VolvoBehaviour { gossipsub })
         })?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
@@ -70,7 +81,12 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
     let topic = gossipsub::IdentTopic::new("VolvoComm");
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
-    let mut _stdin = BufReader::new(stdin()).lines();
+    let (tx, mut rx) = mpsc::channel(1);
+
+    {
+        let mut tx_lock = TX.lock().await;
+        *tx_lock = Some(tx);
+    }
 
     swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
     swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
@@ -87,10 +103,29 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
     }
 
     loop {
-        match swarm.select_next_some().await {
-            SwarmEvent::NewListenAddr { address, .. } => println!("Listening on {address:?}"),
-            SwarmEvent::Behaviour(event) => println!("{event:?}"),
-            _ => {}
+        select! {
+            event = swarm.select_next_some() => match event {
+                SwarmEvent::NewListenAddr { address, .. } => println!("Listening on {address:?}"),
+                SwarmEvent::Behaviour(VolvoBehaviourEvent::Gossipsub(gossipsub::Event::Message {
+                    propagation_source: peer_id,
+                    message_id: id,
+                    message,
+                })) => println!(
+                        "Got message: '{}' with id: {id} from peer: {peer_id}",
+                        String::from_utf8_lossy(&message.data),
+                    ),
+                _ => {}
+            },
+            message = rx.next() => match message {
+                Some(msg) => {
+                    if let Err(e) = swarm
+                    .behaviour_mut().gossipsub
+                    .publish(topic.clone(), msg.as_bytes()) {
+                        println!("Publish error: {e:?}");
+                    }
+                },
+                None => {}
+            }
         }
     }
 }
@@ -107,4 +142,12 @@ async fn connect_peer(ip: String) {
             eprintln!("Server error: {:?}", e);
         }
     });
+}
+
+#[tauri::command]
+async fn send_message(message: String) {
+    let mut tx_lock = TX.lock().await;
+    if let Some(tx) = tx_lock.as_mut() {
+        tx.send(message).await.unwrap();
+    }
 }

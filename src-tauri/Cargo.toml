@@ -1,7 +1,7 @@
 [package]
 name = "volvo-comm"
 version = "0.1.0"
-description = "A Tauri App"
+description = "A Secure and Real-Time Chat Interface"
 authors = ["Porya Dashtipour"]
 license = ""
 repository = ""
@@ -30,6 +30,7 @@ libp2p = { version = "0.54.0", features = [
 async-std = { version = "1.12.0", features = ["attributes"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 futures = "0.3.21"
+lazy_static = "1.5.0"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

@@ -1,34 +1,17 @@
 "use client";
 
-import { useRef, useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 import { CSSTransition } from "react-transition-group";
+import useTauriApi from "./hooks/useTauriApi";
+import useEventApi from "./hooks/useEventApi";
+import useScrollToBottom from "./hooks/useScrollToBottom";
+import { Contact, Message } from "./types";
 import Image from "next/image";
 import styles from "./page.module.css";
 
-type Contact = {
-  id: number;
-  name: string;
-  conn: string;
-  image: string;
-};
-
-interface Message {
-  text: string;
-  sender: string;
-  timestamp: Date;
-}
-
 export default function VolvoComm() {
-  const [tauriApi, setTauriApi] = useState<any>(null);
-
-  useEffect(() => {
-    async function loadTauri() {
-      const tauri = await import('@tauri-apps/api/tauri');
-      setTauriApi(tauri);
-    }
-
-    loadTauri();
-  }, []);
+  const tauriApi = useTauriApi();
+  const eventApi = useEventApi();
 
   const [personalUsername, setPersonalUsername] = useState<string>("");
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -39,6 +22,7 @@ export default function VolvoComm() {
   const [newContactImage, setNewContactImage] = useState("/default.png");
   const [messageValue, setMessageValue] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const messagesEndRef = useScrollToBottom<HTMLDivElement>([messages]);
   const [messageHistories, setMessageHistories] = useState<{
     [contactId: string]: Message[];
   }>({});
@@ -86,40 +70,48 @@ export default function VolvoComm() {
   const handleSubmitKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      handleSubmit();
+      handleSubmit(messageValue, personalUsername);
     }
   };
 
-  const handleSubmit = () => {
-    if (messageValue.trim() !== "") {
+  const handleSubmit = (messageValue: string, sender: string) => {
+    if (selectedContact && messageValue.trim() !== "") {
       const newMessage: Message = {
         text: messageValue,
-        sender: personalUsername,
+        sender: sender,
         timestamp: new Date(),
       };
 
-      setMessages([...messages, newMessage]);
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
 
-      if (selectedContact) {
-        setMessageHistories((prevHistories) => ({
+      setMessageHistories((prevHistories) => {
+        const updatedHistories = {
           ...prevHistories,
           [selectedContact.id]: [
             ...(prevHistories[selectedContact.id] || []),
             newMessage,
           ],
-        }));
-      }
+        };
 
-      setMessageValue("");
+        return updatedHistories;
+      });
+
+      if (sender === personalUsername) {
+        tauriApi.invoke("send_message", { message: messageValue });
+        setMessageValue("");
+      }
     }
   };
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (selectedContact) {
+      const intervalId = setInterval(() => {
+        handleSubmit("I'm just checking in.", "bot");
+      }, 3000);
+
+      return () => clearInterval(intervalId);
     }
-  }, [messages]);
+  }, [selectedContact]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -171,10 +163,11 @@ export default function VolvoComm() {
               <button
                 key={contact.id}
                 onClick={() => selectContact(contact)}
-                className={`transition h-14 px-4 py-8 mb-2 ${selectedContact === contact
-                  ? "bg-true-purple/80"
-                  : "bg-true-purple/10"
-                  } text-white text-left shadow-lg border-true-purple rounded-2xl flex items-center space-x-2 hover:cursor-default`}
+                className={`transition h-14 px-4 py-8 mb-2 ${
+                  selectedContact === contact
+                    ? "bg-true-purple/80"
+                    : "bg-true-purple/10"
+                } text-white text-left shadow-lg border-true-purple rounded-2xl flex items-center space-x-2 hover:cursor-default`}
               >
                 <div className="rounded-full overflow-hidden">
                   <Image
@@ -208,20 +201,25 @@ export default function VolvoComm() {
                     </div>
                   </div>
                 ) : (
-                  <div id="chatlog" className="flex text-white flex-col space-y-2 overflow-y-auto">
+                  <div
+                    id="chatlog"
+                    className="flex text-white flex-col space-y-2 overflow-y-auto"
+                  >
                     {messages.map((message, index) => (
                       <div
                         key={index}
-                        className={`flex ${message.sender === personalUsername
-                          ? "justify-end"
-                          : "justify-start"
-                          }`}
+                        className={`flex ${
+                          message.sender === personalUsername
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
                       >
                         <div
-                          className={`message-bubble ${message.sender === personalUsername
-                            ? "bg-true-purple"
-                            : "bg-gray-600"
-                            }`}
+                          className={`message-bubble ${
+                            message.sender === personalUsername
+                              ? "bg-true-purple"
+                              : "bg-gray-600"
+                          }`}
                         >
                           {message.text}
                         </div>
@@ -244,7 +242,7 @@ export default function VolvoComm() {
                 {messageValue && (
                   <button
                     className="ml-2 px-4 py-2 bg-true-purple text-white rounded-full font-bold transition"
-                    onClick={handleSubmit}
+                    onClick={() => handleSubmit(messageValue, personalUsername)}
                   >
                     ↑
                   </button>
@@ -257,7 +255,7 @@ export default function VolvoComm() {
                 Welcome to VolvoComm.
               </h1>
               <h2 className="mb-4 text-xl font-semibold text-gray-300 md:text-2xl">
-                A secure and real-time chat interface
+                A Secure and Real-Time Chat Interface
               </h2>
               <p className="mb-6 text-lg font-normal text-gray-200 lg:text-xl">
                 Choose or add a person from the left sidebar to get started.
@@ -330,13 +328,13 @@ export default function VolvoComm() {
             <div className="flex justify-end space-x-2">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 text-black bg-gray-300 rounded-lg"
+                className="transition px-4 py-2 text-black bg-gray-300 rounded-lg hover:scale-95"
               >
                 Cancel
               </button>
               <button
                 onClick={addContact}
-                className="px-4 py-2 text-white bg-true-purple rounded-lg"
+                className="transition px-4 py-2 text-white bg-true-purple rounded-lg hover:scale-95"
               >
                 Add
               </button>

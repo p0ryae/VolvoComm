@@ -5149,6 +5149,7 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "futures",
+ "lazy_static",
  "libp2p",
  "serde",
  "serde_json",

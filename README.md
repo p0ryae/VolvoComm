@@ -1,7 +1,5 @@
 # VolvoComm
-A Simple but Secure and Real-Time Chat Interface
-
-
+A Secure and Real-Time Chat Interface
 
 ## Features
 - **Real-Time Messaging**: Instant delivery with low latency.
