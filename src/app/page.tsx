@@ -204,8 +204,8 @@ export default function VolvoComm() {
               value={personalUsername}
               onChange={handleUsernameChange}
               onKeyDown={handleUsernameChangeEnter}
-              className="py-2 text-white bg-transparent border-transparent focus:border-true-purple focus:outline-none flex-grow w-1/4 placeholder-gray-400/50"
-              placeholder="Enter your username"
+              className="py-2 text-white font-semibold bg-transparent border-transparent focus:border-true-purple focus:outline-none flex-grow w-1/4 placeholder-gray-400/50"
+              placeholder="Enter username here..."
             />
             <button
               onClick={openModal}
@@ -372,7 +372,7 @@ export default function VolvoComm() {
                 />
                 <label
                   htmlFor="image-upload"
-                  className="cursor-pointer border-2 border-gray-500 rounded-full w-16 h-16 flex items-center justify-center"
+                  className="cursor-pointer border-gray-500 rounded-full w-20 h-20 ml-2 flex items-center justify-center border-4"
                 >
                   {newContactImage ? (
                     <img

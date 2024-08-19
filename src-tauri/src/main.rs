@@ -78,12 +78,20 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
             let message_id_fn = |message: &gossipsub::Message| {
                 let mut s = DefaultHasher::new();
                 message.data.hash(&mut s);
+            
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .expect("Time went backwards... How?")
+                    .as_nanos();
+                timestamp.hash(&mut s);
+            
                 gossipsub::MessageId::from(s.finish().to_string())
             };
 
             let gossipsub_config = gossipsub::ConfigBuilder::default()
-                .heartbeat_interval(Duration::from_secs(10))
+                .heartbeat_interval(Duration::from_secs(5))
                 .validation_mode(gossipsub::ValidationMode::Strict)
+                .duplicate_cache_time(std::time::Duration::from_secs(0))
                 .message_id_fn(message_id_fn)
                 .build()?;
 
