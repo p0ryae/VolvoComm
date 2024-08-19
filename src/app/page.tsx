@@ -51,7 +51,12 @@ export default function VolvoComm() {
     }
 
     setSelectedContact(contact);
-    tauriApi.invoke("connect_peer", { ip: contact.conn }).catch(console.error);
+    const connString = contact.conn.split("/");
+    tauriApi
+      .invoke("connect_peer", {
+        ip: `/ip4/${connString[0]}/tcp/${connString[1]}`,
+      })
+      .catch(console.error);
 
     setMessages(messageHistories[contact.id] || []);
   };
@@ -85,19 +90,18 @@ export default function VolvoComm() {
       setMessages((prevMessages) => [...prevMessages, newMessage]);
 
       setMessageHistories((prevHistories) => {
-        const updatedHistories = {
+        return {
           ...prevHistories,
           [selectedContact.id]: [
             ...(prevHistories[selectedContact.id] || []),
             newMessage,
           ],
         };
-
-        return updatedHistories;
       });
 
+      tauriApi.invoke("send_message", { message: messageValue, sender });
+
       if (sender === personalUsername) {
-        tauriApi.invoke("send_message", { message: messageValue });
         setMessageValue("");
       }
     }
@@ -105,15 +109,51 @@ export default function VolvoComm() {
 
   useEffect(() => {
     if (eventListenApi) {
-      const unsubscribe = eventListenApi("send_rec_message", (event: any) => {
-        handleSubmit(event.payload.message, "other");
-      });
+      const setupListener = async () => {
+        const unsubscribe = await eventListenApi(
+          "send_rec_message",
+          (event: any) => {
+            const { message, sender } = event.payload;
+
+            if (selectedContact) {
+              setMessageHistories((prevHistories) => {
+                const updatedHistories = {
+                  ...prevHistories,
+                  [selectedContact?.id]: [
+                    ...(prevHistories[selectedContact?.id] || []),
+                    { text: message, sender: sender, timestamp: new Date() },
+                  ],
+                };
+
+                return updatedHistories;
+              });
+
+              setMessages((prevMessages) => [
+                ...prevMessages,
+                { text: message, sender: sender, timestamp: new Date() },
+              ]);
+            }
+          }
+        );
+
+        return unsubscribe;
+      };
+
+      const unsubscribePromise = setupListener();
 
       return () => {
-        if (unsubscribe) unsubscribe();
+        unsubscribePromise
+          .then((unsubscribeFn) => {
+            if (typeof unsubscribeFn === "function") {
+              unsubscribeFn();
+            }
+          })
+          .catch((error) => {
+            console.error("Failed to unsubscribe:", error);
+          });
       };
     }
-  }, [eventListenApi]);
+  }, [eventListenApi, selectedContact]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

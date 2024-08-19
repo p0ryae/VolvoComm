@@ -31,6 +31,7 @@ struct VolvoBehaviour {
 #[derive(Clone, serde::Serialize)]
 struct Payload {
     message: String,
+    sender: String,
 }
 
 fn main() {
@@ -133,7 +134,7 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
                     );
                     let window = GLOBAL_WINDOW.lock().unwrap();
                     if let Some(window) = window.as_ref() {
-                        window.emit("send_rec_message",  Payload { message: String::from_utf8_lossy(&message.data).to_string() } ).unwrap();
+                        window.emit("send_rec_message",  Payload { message: String::from_utf8_lossy(&message.data).to_string(), sender: peer_id.to_string() } ).unwrap();
                     }
                 },
                 SwarmEvent::Behaviour(event) => {
