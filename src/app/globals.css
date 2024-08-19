@@ -34,6 +34,10 @@ body {
   font-size: 16px;
 }
 
+.allow-select {
+  -webkit-user-select: auto !important;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

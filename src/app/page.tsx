@@ -19,6 +19,7 @@ export default function VolvoComm() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newContactName, setNewContactName] = useState("");
   const [newContactConn, setNewContactConn] = useState("");
+  const [personalConn, setPersonalConn] = useState("10.0.0.XX/12345");
   const [newContactImage, setNewContactImage] = useState("/default.png");
   const [messageValue, setMessageValue] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,6 +27,19 @@ export default function VolvoComm() {
   const [messageHistories, setMessageHistories] = useState<{
     [contactId: string]: Message[];
   }>({});
+
+  useEffect(() => {
+    if (tauriApi) {
+      const setupInvoke = async () => {
+        await tauriApi.invoke("get_ip_addr").then((ip: string) => {
+          let ipSplit = ip.split("/");
+          setPersonalConn(`${ipSplit[2]}/${ipSplit[4]}`);
+        });
+      };
+
+      setupInvoke();
+    }
+  }, [tauriApi]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMessageValue(e.target.value);
@@ -54,7 +68,7 @@ export default function VolvoComm() {
     const connString = contact.conn.split("/");
     tauriApi
       .invoke("connect_peer", {
-        ip: `/ip4/${connString[0]}/tcp/${connString[1]}`,
+        ip: `/ip4/${connString[2]}/tcp/${connString[4]}`,
       })
       .catch(console.error);
 
@@ -80,30 +94,31 @@ export default function VolvoComm() {
   };
 
   const handleSubmit = (messageValue: string, sender: string) => {
-    if (selectedContact && messageValue.trim() !== "") {
-      const newMessage: Message = {
-        text: messageValue,
-        sender: sender,
-        timestamp: new Date(),
+    if (messageValue.trim() == "") return;
+
+    const newMessage: Message = {
+      text: messageValue,
+      sender: sender,
+      timestamp: new Date(),
+    };
+
+    setMessages((prevMessages) => [...prevMessages, newMessage]);
+
+    if (!selectedContact) return;
+    setMessageHistories((prevHistories) => {
+      return {
+        ...prevHistories,
+        [selectedContact.id]: [
+          ...(prevHistories[selectedContact.id] || []),
+          newMessage,
+        ],
       };
+    });
 
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
+    tauriApi.invoke("send_message", { message: messageValue, sender });
 
-      setMessageHistories((prevHistories) => {
-        return {
-          ...prevHistories,
-          [selectedContact.id]: [
-            ...(prevHistories[selectedContact.id] || []),
-            newMessage,
-          ],
-        };
-      });
-
-      tauriApi.invoke("send_message", { message: messageValue, sender });
-
-      if (sender === personalUsername) {
-        setMessageValue("");
-      }
+    if (sender === personalUsername) {
+      setMessageValue("");
     }
   };
 
@@ -115,24 +130,23 @@ export default function VolvoComm() {
           (event: any) => {
             const { message, sender } = event.payload;
 
-            if (selectedContact) {
-              setMessageHistories((prevHistories) => {
-                const updatedHistories = {
-                  ...prevHistories,
-                  [selectedContact?.id]: [
-                    ...(prevHistories[selectedContact?.id] || []),
-                    { text: message, sender: sender, timestamp: new Date() },
-                  ],
-                };
+            if (!selectedContact) return;
+            setMessageHistories((prevHistories) => {
+              const updatedHistories = {
+                ...prevHistories,
+                [selectedContact?.id]: [
+                  ...(prevHistories[selectedContact?.id] || []),
+                  { text: message, sender: sender, timestamp: new Date() },
+                ],
+              };
 
-                return updatedHistories;
-              });
+              return updatedHistories;
+            });
 
-              setMessages((prevMessages) => [
-                ...prevMessages,
-                { text: message, sender: sender, timestamp: new Date() },
-              ]);
-            }
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              { text: message, sender: sender, timestamp: new Date() },
+            ]);
           }
         );
 
@@ -189,7 +203,7 @@ export default function VolvoComm() {
               value={personalUsername}
               onChange={handleUsernameChange}
               onKeyDown={handleUsernameChangeEnter}
-              className="font-bold py-2 text-white bg-transparent border-transparent focus:border-true-purple focus:outline-none flex-grow w-1/4"
+              className="py-2 text-white bg-transparent border-transparent focus:border-true-purple focus:outline-none flex-grow w-1/4 placeholder-gray-400/50"
               placeholder="Enter your username"
             />
             <button
@@ -230,6 +244,17 @@ export default function VolvoComm() {
                 <span>{contact.name}</span>
               </button>
             ))}
+          </div>
+          <div className="relative text-center text-white mb-6 mt-auto group">
+            <div className="transition-opacity duration-300 opacity-100 group-hover:opacity-0 text-gray-400/50">
+              Hover for Connection Address
+            </div>
+            <div
+              id="conn-addr"
+              className="allow-select absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-gray-300/80"
+            >
+              {personalConn}
+            </div>
           </div>
         </div>
         <div className="w-2/3 bg-zinc-900 p-4 flex flex-col justify-center items-center">

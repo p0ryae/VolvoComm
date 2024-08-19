@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use local_ip_address::local_ip;
 use tauri::Manager;
 
 use async_std::sync::Mutex;
@@ -13,9 +14,11 @@ use libp2p::{gossipsub, noise, swarm::NetworkBehaviour, tcp, yamux};
 use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use tracing_subscriber::EnvFilter;
+
+static IP_ADDR: OnceLock<String> = OnceLock::new();
 
 lazy_static! {
     static ref TX: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
@@ -29,7 +32,7 @@ struct VolvoBehaviour {
 }
 
 #[derive(Clone, serde::Serialize)]
-struct Payload {
+struct RecPayload {
     message: String,
     sender: String,
 }
@@ -55,7 +58,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             show_window,
             connect_peer,
-            send_message
+            send_message,
+            get_ip_addr
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -103,8 +107,8 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
         *tx_lock = Some(tx);
     }
 
-    swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
-    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+    let my_local_ip = local_ip().unwrap();
+    swarm.listen_on(format!("/ip4/{}/tcp/0", my_local_ip).parse()?)?;
 
     if !ip.is_empty() {
         let remote_result = ip.parse::<Multiaddr>();
@@ -122,6 +126,7 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
             event = swarm.select_next_some() => match event {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     println!("Listening on {address:?}");
+                    IP_ADDR.set(address.to_string()).expect("Failed to modify IP_ADDR OnceLock.");
                 },
                 SwarmEvent::Behaviour(VolvoBehaviourEvent::Gossipsub(gossipsub::Event::Message {
                     propagation_source: peer_id,
@@ -134,7 +139,7 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
                     );
                     let window = GLOBAL_WINDOW.lock().unwrap();
                     if let Some(window) = window.as_ref() {
-                        window.emit("send_rec_message",  Payload { message: String::from_utf8_lossy(&message.data).to_string(), sender: peer_id.to_string() } ).unwrap();
+                        window.emit("send_rec_message",  RecPayload { message: String::from_utf8_lossy(&message.data).to_string(), sender: peer_id.to_string() } ).unwrap();
                     }
                 },
                 SwarmEvent::Behaviour(event) => {
@@ -176,4 +181,9 @@ async fn send_message(message: String) {
     if let Some(tx) = tx_lock.as_mut() {
         tx.send(message).await.unwrap();
     }
+}
+
+#[tauri::command]
+async fn get_ip_addr() -> String {
+    (*IP_ADDR.get().unwrap().clone()).into()
 }
