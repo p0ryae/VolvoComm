@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CSSTransition } from "react-transition-group";
 import useTauriApi from "./hooks/useTauriApi";
-import useEventApi from "./hooks/useEventApi";
+import useEventListenApi from "./hooks/useEventListenApi";
 import useScrollToBottom from "./hooks/useScrollToBottom";
 import { Contact, Message } from "./types";
 import Image from "next/image";
@@ -11,7 +11,7 @@ import styles from "./page.module.css";
 
 export default function VolvoComm() {
   const tauriApi = useTauriApi();
-  const eventApi = useEventApi();
+  const eventListenApi = useEventListenApi();
 
   const [personalUsername, setPersonalUsername] = useState<string>("");
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -104,14 +104,16 @@ export default function VolvoComm() {
   };
 
   useEffect(() => {
-    if (selectedContact) {
-      const intervalId = setInterval(() => {
-        handleSubmit("I'm just checking in.", "bot");
-      }, 3000);
+    if (eventListenApi) {
+      const unsubscribe = eventListenApi("send_rec_message", (event: any) => {
+        handleSubmit(event.payload.message, "other");
+      });
 
-      return () => clearInterval(intervalId);
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
     }
-  }, [selectedContact]);
+  }, [eventListenApi]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

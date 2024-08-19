@@ -13,16 +13,24 @@ use libp2p::{gossipsub, noise, swarm::NetworkBehaviour, tcp, yamux};
 use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 use std::time::Duration;
 use tracing_subscriber::EnvFilter;
 
 lazy_static! {
     static ref TX: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
+    static ref GLOBAL_WINDOW: Arc<std::sync::Mutex<Option<tauri::Window>>> =
+        Arc::new(std::sync::Mutex::new(None));
 }
 
 #[derive(NetworkBehaviour)]
 struct VolvoBehaviour {
     gossipsub: gossipsub::Behaviour,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct Payload {
+    message: String,
 }
 
 fn main() {
@@ -37,6 +45,12 @@ fn main() {
     });
 
     tauri::Builder::default()
+        .setup(|app| {
+            let window = app.get_window("main").unwrap();
+            let mut global_window = GLOBAL_WINDOW.lock().unwrap();
+            *global_window = Some(window);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             show_window,
             connect_peer,
@@ -105,15 +119,26 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
     loop {
         select! {
             event = swarm.select_next_some() => match event {
-                SwarmEvent::NewListenAddr { address, .. } => println!("Listening on {address:?}"),
+                SwarmEvent::NewListenAddr { address, .. } => {
+                    println!("Listening on {address:?}");
+                },
                 SwarmEvent::Behaviour(VolvoBehaviourEvent::Gossipsub(gossipsub::Event::Message {
                     propagation_source: peer_id,
                     message_id: id,
                     message,
-                })) => println!(
+                })) => {
+                    println!(
                         "Got message: '{}' with id: {id} from peer: {peer_id}",
                         String::from_utf8_lossy(&message.data),
-                    ),
+                    );
+                    let window = GLOBAL_WINDOW.lock().unwrap();
+                    if let Some(window) = window.as_ref() {
+                        window.emit("send_rec_message",  Payload { message: String::from_utf8_lossy(&message.data).to_string() } ).unwrap();
+                    }
+                },
+                SwarmEvent::Behaviour(event) => {
+                    println!("{event:?}");
+                },
                 _ => {}
             },
             message = rx.next() => match message {
