@@ -7,7 +7,7 @@
 </h1>
 
 <p align="center">
-  A Lightweight, Secure, and Real-Time Chat Interface
+   A Lightweight, Secure, and Real-Time Messaging Platform 💬 
 </p>
 
 
