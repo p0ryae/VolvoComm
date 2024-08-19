@@ -319,6 +319,15 @@ export default function VolvoComm() {
             </div>
           ) : (
             <div className="flex flex-col justify-center items-center text-center py-12 px-6 rounded-lg">
+              <Image
+                src={"./logo.png"}
+                alt={`Profile Picture`}
+                width={160}
+                height={160}
+                quality={100}
+                priority
+                className="shadow-md mb-6"
+              />
               <h1 className="mb-4 text-4xl font-extrabold leading-tight text-white md:text-5xl lg:text-6xl">
                 Welcome to VolvoComm.
               </h1>
