@@ -66,9 +66,10 @@ export default function VolvoComm() {
 
     setSelectedContact(contact);
     const connString = contact.conn.split("/");
+    console.log(connString);
     tauriApi
       .invoke("connect_peer", {
-        ip: `/ip4/${connString[2]}/tcp/${connString[4]}`,
+        ip: `/ip4/${connString[0]}/tcp/${connString[1]}`,
       })
       .catch(console.error);
 

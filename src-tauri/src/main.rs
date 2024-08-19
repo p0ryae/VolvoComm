@@ -126,7 +126,9 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
             event = swarm.select_next_some() => match event {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     println!("Listening on {address:?}");
-                    IP_ADDR.set(address.to_string()).expect("Failed to modify IP_ADDR OnceLock.");
+                    if IP_ADDR.get().is_none() {
+                        IP_ADDR.set(address.to_string()).expect("Failed to modify IP_ADDR OnceLock.");
+                    }
                 },
                 SwarmEvent::Behaviour(VolvoBehaviourEvent::Gossipsub(gossipsub::Event::Message {
                     propagation_source: peer_id,
