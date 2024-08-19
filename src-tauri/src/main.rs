@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use local_ip_address::local_ip;
+pub mod types;
+
 use tauri::Manager;
 
 use async_std::sync::Mutex;
@@ -10,7 +11,8 @@ use futures::{select, StreamExt};
 use lazy_static::lazy_static;
 use libp2p::swarm::SwarmEvent;
 use libp2p::Multiaddr;
-use libp2p::{gossipsub, noise, swarm::NetworkBehaviour, tcp, yamux};
+use libp2p::{gossipsub, noise, tcp, yamux};
+use local_ip_address::local_ip;
 use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
 use std::hash::{Hash, Hasher};
@@ -24,17 +26,6 @@ lazy_static! {
     static ref TX: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
     static ref GLOBAL_WINDOW: Arc<std::sync::Mutex<Option<tauri::Window>>> =
         Arc::new(std::sync::Mutex::new(None));
-}
-
-#[derive(NetworkBehaviour)]
-struct VolvoBehaviour {
-    gossipsub: gossipsub::Behaviour,
-}
-
-#[derive(Clone, serde::Serialize)]
-struct RecPayload {
-    message: String,
-    sender: String,
 }
 
 fn main() {
@@ -61,6 +52,15 @@ fn main() {
             send_message,
             get_ip_addr
         ])
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            println!("{}, {argv:?}, {cwd}", app.package_info().name);
+
+            app.emit_all(
+                "single-instance",
+                types::InstancePayload { args: argv, cwd },
+            )
+            .unwrap();
+        }))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -92,7 +92,7 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
                 gossipsub_config,
             )?;
 
-            Ok(VolvoBehaviour { gossipsub })
+            Ok(types::VolvoBehaviour { gossipsub })
         })?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
@@ -130,7 +130,7 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
                         IP_ADDR.set(address.to_string()).expect("Failed to modify IP_ADDR OnceLock.");
                     }
                 },
-                SwarmEvent::Behaviour(VolvoBehaviourEvent::Gossipsub(gossipsub::Event::Message {
+                SwarmEvent::Behaviour(types::VolvoBehaviourEvent::Gossipsub(gossipsub::Event::Message {
                     propagation_source: peer_id,
                     message_id: id,
                     message,
@@ -141,7 +141,7 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
                     );
                     let window = GLOBAL_WINDOW.lock().unwrap();
                     if let Some(window) = window.as_ref() {
-                        window.emit("send_rec_message",  RecPayload { message: String::from_utf8_lossy(&message.data).to_string(), sender: peer_id.to_string() } ).unwrap();
+                        window.emit("send_rec_message",  types::RecPayload { message: String::from_utf8_lossy(&message.data).to_string(), sender: peer_id.to_string() } ).unwrap();
                     }
                 },
                 SwarmEvent::Behaviour(event) => {

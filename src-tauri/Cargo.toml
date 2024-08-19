@@ -16,6 +16,7 @@ tauri-build = { version = "1.5.3", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.7.0", features = [] }
+tauri-plugin-single-instance = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 libp2p = { version = "0.54.0", features = [
     "async-std",
     "gossipsub",
