@@ -1,15 +1,5 @@
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/2a5451ab-9bda-4474-8495-2910d6e43816" width=100 height=100/>
-</div>
-
-<h1 align="center">
-  VolvoComm
-</h1>
-
-<p align="center">
-   A Lightweight, Secure, and Real-Time Messaging Platform 💬 
-</p>
-
+# VolvoComm
+A Lightweight, Secure, and Real-Time Messaging Platform 💬 
 
 ## Features
 - **Real-Time Messaging**: Instant delivery with low latency.
