@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CSSTransition } from "react-transition-group";
 import useTauriApi from "./hooks/useTauriApi";
 import useEventListenApi from "./hooks/useEventListenApi";
 import useScrollToBottom from "./hooks/useScrollToBottom";
 import { Contact, Message } from "./types";
 import Image from "next/image";
-import styles from "./page.module.css";
+import ContactModal from "./components/ContactModal";
 
 export default function VolvoComm() {
   const tauriApi = useTauriApi();
@@ -27,6 +26,11 @@ export default function VolvoComm() {
   const [messageHistories, setMessageHistories] = useState<{
     [contactId: string]: Message[];
   }>({});
+  const [processedConns, setProcessedConns] = useState<Set<string>>(new Set());
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(personalConn).then(() => {});
+  };
 
   useEffect(() => {
     if (tauriApi) {
@@ -40,6 +44,45 @@ export default function VolvoComm() {
       setupInvoke();
     }
   }, [tauriApi]);
+
+  useEffect(() => {
+    if (eventListenApi) {
+      const setupListener = async () => {
+        await eventListenApi("message_req", (event: any) => {
+          const { id, ip } = event.payload;
+
+          let formatIp = ip.split("/");
+          if (formatIp.length < 5) {
+            console.warn("Invalid IP format", ip);
+            return;
+          }
+
+          const formattedIp = `${formatIp[2]}/${formatIp[4]}`;
+
+          setContacts((prevContacts) => {
+            const contactExists = prevContacts.some(
+              (contact) => contact.conn === formattedIp
+            );
+            if (contactExists) {
+              console.log("Contact already exists", formattedIp);
+              return prevContacts;
+            }
+
+            const newContact: Contact = {
+              id: prevContacts.length + 1,
+              name: id,
+              conn: formattedIp,
+              image: "/default.png",
+            };
+
+            return [...prevContacts, newContact];
+          });
+        });
+      };
+
+      setupListener();
+    }
+  }, [eventListenApi, contacts]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMessageValue(e.target.value);
@@ -65,13 +108,18 @@ export default function VolvoComm() {
     }
 
     setSelectedContact(contact);
+
     const connString = contact.conn.split("/");
-    console.log(connString);
-    tauriApi
-      .invoke("connect_peer", {
-        ip: `/ip4/${connString[0]}/tcp/${connString[1]}`,
-      })
-      .catch(console.error);
+    const connKey = `/ip4/${connString[0]}/tcp/${connString[1]}`;
+
+    if (!processedConns.has(connKey)) {
+      tauriApi
+        .invoke("connect_peer", { ip: connKey })
+        .then(() => {
+          setProcessedConns((prev) => new Set(prev).add(connKey));
+        })
+        .catch(console.error);
+    }
 
     setMessages(messageHistories[contact.id] || []);
   };
@@ -215,7 +263,7 @@ export default function VolvoComm() {
             </button>
           </div>
 
-          <div className="flex flex-col my-5 mx-4">
+          <div className="flex flex-col my-5 mx-4 h-3/3 overflow-y-auto">
             {contacts.map((contact) => (
               <button
                 key={contact.id}
@@ -242,7 +290,9 @@ export default function VolvoComm() {
                     className="shadow-md"
                   />
                 </div>
-                <span>{contact.name}</span>
+                <span className="inline-block max-w-[150px] truncate">
+                  {contact.name}
+                </span>
               </button>
             ))}
           </div>
@@ -251,8 +301,8 @@ export default function VolvoComm() {
               Hover for Connection Address
             </div>
             <div
-              id="conn-addr"
-              className="allow-select absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-gray-300/80"
+              className={`absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-100 text-gray-300/80`}
+              onClick={handleCopy}
             >
               {personalConn}
             </div>
@@ -343,82 +393,17 @@ export default function VolvoComm() {
         </div>
       </div>
 
-      {isModalOpen && (
-        <div className="absolute inset-0 text-black flex items-center justify-center bg-black bg-opacity-60"></div>
-      )}
-
-      <CSSTransition
-        in={isModalOpen}
-        timeout={300}
-        classNames={{
-          enter: styles.modalEnter,
-          enterActive: styles.modalEnterActive,
-          exit: styles.modalExit,
-          exitActive: styles.modalExitActive,
-        }}
-        unmountOnExit
-      >
-        <div className="fixed inset-0 text-white flex items-center justify-center">
-          <div className="bg-zinc-900 p-6 rounded-xl shadow-lg">
-            <h2 className="text-xl font-bold mb-4">Add New Contact</h2>
-            <div className="flex flex-row">
-              <div className="flex items-center mb-4">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="cursor-pointer border-gray-500 rounded-full w-20 h-20 ml-2 flex items-center justify-center border-4"
-                >
-                  {newContactImage ? (
-                    <img
-                      src={newContactImage}
-                      alt="Profile"
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-gray-400">Add Image</span>
-                  )}
-                </label>
-              </div>
-              <div className="flex flex-col mx-4 text-white">
-                <input
-                  type="text"
-                  placeholder="Contact name..."
-                  value={newContactName}
-                  onChange={(e) => setNewContactName(e.target.value)}
-                  className="w-full mb-2 px-3 py-2 border border-gray-500 rounded-xl bg-transparent border-2 border-transparent focus:border-true-purple focus:outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Connection address..."
-                  value={newContactConn}
-                  onChange={(e) => setNewContactConn(e.target.value)}
-                  className="w-full mb-4 px-3 py-2  border border-gray-500 rounded-xl bg-transparent border-2 border-transparent focus:border-true-purple focus:outline-none"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={closeModal}
-                className="transition px-4 py-2 text-black bg-gray-300 rounded-lg hover:scale-95"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={addContact}
-                className="transition px-4 py-2 text-white bg-true-purple rounded-lg hover:scale-95"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-      </CSSTransition>
+      <ContactModal
+        isModalOpen={isModalOpen}
+        closeModal={closeModal}
+        addContact={addContact}
+        newContactImage={newContactImage}
+        handleImageUpload={handleImageUpload}
+        newContactName={newContactName}
+        setNewContactName={setNewContactName}
+        newContactConn={newContactConn}
+        setNewContactConn={setNewContactConn}
+      />
     </main>
   );
 }

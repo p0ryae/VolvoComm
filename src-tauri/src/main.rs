@@ -20,7 +20,7 @@ use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use tracing_subscriber::EnvFilter;
 
-static IP_ADDR: OnceLock<String> = OnceLock::new();
+static IP_ADDR: OnceLock<Multiaddr> = OnceLock::new();
 
 lazy_static! {
     static ref TX: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
@@ -78,13 +78,13 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
             let message_id_fn = |message: &gossipsub::Message| {
                 let mut s = DefaultHasher::new();
                 message.data.hash(&mut s);
-            
+
                 let timestamp = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .expect("Time went backwards... How?")
                     .as_nanos();
                 timestamp.hash(&mut s);
-            
+
                 gossipsub::MessageId::from(s.finish().to_string())
             };
 
@@ -135,7 +135,7 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     println!("Listening on {address:?}");
                     if IP_ADDR.get().is_none() {
-                        IP_ADDR.set(address.to_string()).expect("Failed to modify IP_ADDR OnceLock.");
+                        IP_ADDR.set(address).expect("Failed to modify IP_ADDR OnceLock.");
                     }
                 },
                 SwarmEvent::Behaviour(types::VolvoBehaviourEvent::Gossipsub(gossipsub::Event::Message {
@@ -147,11 +147,26 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
                         "Got message: '{}' with id: {id} from peer: {peer_id}",
                         String::from_utf8_lossy(&message.data),
                     );
+                    
                     let window = GLOBAL_WINDOW.lock().unwrap();
                     if let Some(window) = window.as_ref() {
                         window.emit("send_rec_message",  types::RecPayload { message: String::from_utf8_lossy(&message.data).to_string(), sender: peer_id.to_string() } ).unwrap();
                     }
                 },
+                // SwarmEvent::Behaviour(types::VolvoBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
+                //     peer_id,
+                //     topic
+                // })) => {
+                //     println!("New Subscription by {peer_id:?} to the {topic:?}");
+
+                //     let window = GLOBAL_WINDOW.lock().unwrap();
+                //     if let Some(window) = window.as_ref() {
+                //     if let Err(e) = window.emit("message_req", types::ReqPayload {
+                //         id: peer_id.to_string()
+                //     }) {
+                //         eprintln!("Failed to emit message request: {}", e);
+                //     }}
+                // },
                 SwarmEvent::Behaviour(event) => {
                     println!("{event:?}");
                 },
@@ -195,5 +210,5 @@ async fn send_message(message: String) {
 
 #[tauri::command]
 async fn get_ip_addr() -> String {
-    (*IP_ADDR.get().unwrap().clone()).into()
+    (*IP_ADDR.get().unwrap().to_string()).into()
 }

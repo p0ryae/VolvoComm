@@ -16,3 +16,8 @@ pub struct InstancePayload {
     pub args: Vec<String>,
     pub cwd: String,
 }
+
+#[derive(Clone, serde::Serialize)]
+pub struct ReqPayload {
+    pub id: String
+}
