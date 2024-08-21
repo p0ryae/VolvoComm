@@ -1,5 +1,5 @@
 # VolvoComm
-A Lightweight, Secure, and Real-Time Messaging Platform 💬 
+A Lightweight, Secure, and Real-Time Messaging Platform
 
 ## Features
 - **Real-Time Messaging**: Instant delivery with low latency.
