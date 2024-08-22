@@ -13,7 +13,7 @@ A Lightweight, Secure, and Real-Time Messaging Platform
 
 ## 📜 License
 
-This project is licensed under the [Apache 2.0](https://github.com/p0ryae/VolvoComm/blob/main/LICENSE) License.
+This project is licensed under the [Apache 2.0](https://github.com/p0ryae/VolvoComm/blob/main/LICENSE) license.
 
 ## 📞 Contact
 
