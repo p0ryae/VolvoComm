@@ -13,7 +13,7 @@ jobs:
       name_bin: volvocomm-bin
       version: ${{ steps.get-package.outputs.version }}
       description: "Lightweight cross-platform software, unifying games into a single, modern library"
-      license: "CC-BY-NC-SA-4.0"
+      license: "Apache-2.0"
       deb_pkg_name: volvocomm_${{ steps.get-package.outputs.version }}_amd64.deb 
       deb_pkg_path: ./src-tauri/target/release/bundle/deb/
       deb_pkg_renamed: volvocomm-${{ steps.get-package.outputs.version }}-${{ env.ARCH }}.deb

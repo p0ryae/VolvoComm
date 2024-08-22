@@ -2,7 +2,7 @@
 name = "volvocomm"
 version = "0.1.0"
 authors = ["Porya Dashtipour"]
-license = ""
+license = "Apache-2.0"
 default-run = "volvocomm"
 edition = "2021"
 rust-version = "1.70"
