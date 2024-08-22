@@ -16,7 +16,7 @@ A Lightweight, Secure, and Real-Time Messaging Platform
 - `Next.js`: For server-side rendering and static site generation
 - `React.js`: For building the user-interface with a modern and responsive design
 - `TypeScript`: For Type safety and enhanced development experience by catching errors early
-- `Tailwind CSS`: For custom, utility-first styling that ensures a consistent and visually appealing UI (life changer)
+- `Tailwind CSS`: For custom, utility-first styling that ensures a consistent and visually appealing UI
 
 ### Back-end:
 - `Rust`: For high-performance, secure and memory safe server-side processing
