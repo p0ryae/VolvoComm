@@ -1,9 +1,9 @@
 [package]
-name = "volvo-comm"
+name = "volvocomm"
 version = "0.1.0"
 authors = ["Porya Dashtipour"]
 license = ""
-default-run = "volvo-comm"
+default-run = "volvocomm"
 edition = "2021"
 rust-version = "1.70"
 
