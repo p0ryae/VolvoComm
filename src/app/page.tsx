@@ -18,7 +18,7 @@ export default function VolvoComm() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newContactName, setNewContactName] = useState("");
   const [newContactConn, setNewContactConn] = useState("");
-  const [personalConn, setPersonalConn] = useState("10.0.0.XX/12345");
+  const [personalConn, setPersonalConn] = useState("");
   const [newContactImage, setNewContactImage] = useState("/default.png");
   const [messageValue, setMessageValue] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -51,27 +51,14 @@ export default function VolvoComm() {
         await eventListenApi("message_req", (event: any) => {
           const { id, ip } = event.payload;
 
-          let formatIp = ip.split("/");
-          if (formatIp.length < 5) {
-            console.warn("Invalid IP format", ip);
-            return;
-          }
-
-          const formattedIp = `${formatIp[2]}/${formatIp[4]}`;
+          // let formatIp = ip.split("/");
+          // const formattedIp = `${formatIp[2]}/${formatIp[4]}`;
 
           setContacts((prevContacts) => {
-            const contactExists = prevContacts.some(
-              (contact) => contact.conn === formattedIp
-            );
-            if (contactExists) {
-              console.log("Contact already exists", formattedIp);
-              return prevContacts;
-            }
-
             const newContact: Contact = {
               id: prevContacts.length + 1,
               name: id,
-              conn: formattedIp,
+              conn: "",
               image: "/default.png",
             };
 
@@ -122,6 +109,10 @@ export default function VolvoComm() {
     }
 
     setMessages(messageHistories[contact.id] || []);
+  };
+
+  const resetSelectedContact = () => {
+    setSelectedContact(undefined);
   };
 
   const openModal = () => {
@@ -247,19 +238,52 @@ export default function VolvoComm() {
       <div className="flex flex-row w-full h-screen">
         <div className="flex flex-col w-1/3 bg-zinc-800">
           <div className="flex flex-row items-center w-full p-4">
+            <button
+              onClick={resetSelectedContact}
+              className="transition h-8 w-8 font-bold bg-true-purple text-white rounded-full hover:scale-110 flex items-center justify-center"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" />{" "}
+                <polyline points="5 12 3 12 12 3 21 12 19 12" />{" "}
+                <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />{" "}
+                <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+              </svg>
+            </button>
             <input
               type="text"
               value={personalUsername}
               onChange={handleUsernameChange}
               onKeyDown={handleUsernameChangeEnter}
-              className="py-2 text-white font-semibold bg-transparent border-transparent focus:border-true-purple focus:outline-none flex-grow w-1/4 placeholder-gray-400/50"
-              placeholder="Enter username here..."
+              className="py-2 text-white font-semibold bg-transparent border-transparent focus:border-true-purple focus:outline-none flex-grow w-1/4 placeholder-gray-400/50 text-center"
+              placeholder="Enter Username..."
             />
             <button
               onClick={openModal}
-              className="transition h-8 w-8 font-bold bg-true-purple text-white rounded-full hover:scale-110"
+              className="transition h-8 w-8 font-bold bg-true-purple text-white rounded-full hover:scale-110 flex items-center justify-center"
             >
-              +
+              <svg
+                width="18"
+                height="18"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                />
+              </svg>
             </button>
           </div>
 
@@ -382,11 +406,10 @@ export default function VolvoComm() {
                 Welcome to VolvoComm.
               </h1>
               <h2 className="mb-4 text-xl font-semibold text-gray-300 md:text-2xl">
-                A Secure and Real-Time Chat Interface
+                A Secure and Real-Time Messaging Platform
               </h2>
               <p className="mb-6 text-lg font-normal text-gray-200 lg:text-xl">
-                Choose or add a person from the left sidebar to get started.
-                Make sure to set a username.
+                Choose or add a person from the left sidebar to get started. Setting a username is not mandatory.
               </p>
             </div>
           )}

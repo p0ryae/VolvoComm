@@ -147,7 +147,7 @@ async fn run_server(ip: String) -> Result<(), Box<dyn Error>> {
                         "Got message: '{}' with id: {id} from peer: {peer_id}",
                         String::from_utf8_lossy(&message.data),
                     );
-                    
+
                     let window = GLOBAL_WINDOW.lock().unwrap();
                     if let Some(window) = window.as_ref() {
                         window.emit("send_rec_message",  types::RecPayload { message: String::from_utf8_lossy(&message.data).to_string(), sender: peer_id.to_string() } ).unwrap();
