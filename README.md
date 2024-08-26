@@ -1,5 +1,5 @@
 # 💬 VolvoComm
-A Lightweight, Secure, and Real-Time Messaging Platform
+A Lightweight, Secure, and Real-Time Messaging System
 
 ![VolvoComm-prev](https://github.com/user-attachments/assets/3e9f7152-f111-43c9-98d2-f7f39767c567)
 
