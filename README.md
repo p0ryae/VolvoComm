@@ -6,10 +6,10 @@ A Lightweight, Secure, and Real-Time Messaging System
 
 ## ✨ Features
 
-- 🏆 **Real-Time Messaging**: Instant low-latency delivery using Transmission Control Protocol (TCP).
-- 🔒 **End-to-End Encryption**: Protects messages with Advanced Encryption Standard (AES) algorithm.
-- 🤝 **Peer-to-Peer Architecture**: Direct communication between clients without a central server.
-- 🎨 **User-Friendly Experience**: Sleek, lightning-fast, intuitive, and modern looking.
+- **Real-Time Messaging**: Instant low-latency delivery using Transmission Control Protocol (TCP).
+- **End-to-End Encryption**: Protects messages with Advanced Encryption Standard (AES) algorithm.
+- **Peer-to-Peer Architecture**: Direct communication between clients without a central server.
+- **User-Friendly Experience**: Sleek, lightning-fast, intuitive, and modern looking.
 
 ## 📜 License
 
